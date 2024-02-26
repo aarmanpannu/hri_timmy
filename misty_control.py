@@ -16,7 +16,8 @@ class Misty():
         self.misty_ip = misty_ip
         self.set_up_misty_api()
         self.set_up_misty_websockets()
-        self.done_speaking = False
+        self.speaking_complete = False
+        self.listening_complete = False
 
     def set_up_misty_api(self):
         # self.connect_to_misty_api()
@@ -90,11 +91,13 @@ class Misty():
             }
         }
         """
+        if "message" in msg_msg:
+            self.listening_complete = True
         # print("\n\nmessage")
         # print(f"{msg_instance=}")
         # print(f"{msg_msg=}")
         # print("\n\n")
-        pass
+        return
 
 
     def vr_on_error(self, error_instance, error_msg):
@@ -103,6 +106,7 @@ class Misty():
         # print(f"{error_msg=}")
         # print("\n\n")
         pass
+
 
     def vr_on_close(self, msg1, msg2, msg3):
         if self.ws_voicerecord is not None:
@@ -139,7 +143,7 @@ class Misty():
         print(f"{msg_msg=}")
         print("\n\n")
         if "utteranceId" in msg_msg:
-            self.done_speaking = True
+            self.speaking_complete = True
 
     def ttsc_on_error(self, error_instance, error_msg):
         # print("\n\nerror")
@@ -165,9 +169,9 @@ class Misty():
         payload = {"Text": f"<speak>{text_to_speech}</speak>", "UtteranceId": "First"}
         # can set "Flush": True to remove all enqued texts, default False
         # other customizations w/ speed of speech but unnecessary 
-        print(f"Checkpoint 2: {m.done_speaking=}")
+        print(f"Checkpoint 2: {m.speaking_complete=}")
         res = requests.post(self.speech_endpoint, json=payload)
-        print(f"Checkpoint 3: {m.done_speaking=}")
+        print(f"Checkpoint 3: {m.speaking_complete=}")
         # returns an array? true if no errors?
         # if not res.status_code != 200:
         #     print("Misty unable to receive request. Status Code: ", res.status_code)
@@ -213,6 +217,8 @@ class Misty():
         # print("robot says this: ", response)
         # m.speak(response)
 
+
+
 def signal_handler(sig, frame):
     # closes web sockets before terminating
     m.ws_voicerecord.on_close(None, None, None)
@@ -237,17 +243,22 @@ if __name__ == "__main__":
     # m.speak("Testing")
     # m.ws.run_forever()
 
-    print(f"{m.done_speaking=}")
+    print(f"{m.speaking_complete=}")
     m.speak('What is your name?')
     
-    while not m.done_speaking:
-        print(f"Loop: {m.done_speaking=}")
+    while not m.speaking_complete:
+        print(f"Loop: {m.speaking_complete=}")
         time.sleep(0.5)
 
 
     m.listen(5000, 2000) # starts listening immediately
 
-    time.sleep(4) #we need to wait until the file is saved in misty
+    
+    # wait till audio captured
+    while not m.self.listening_complete:
+        print(f"Loop: {m.listening_complete=}")
+        time.sleep(0.5)
+
 
     m.get_audio_file()
 
